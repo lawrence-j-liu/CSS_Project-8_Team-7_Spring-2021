@@ -156,7 +156,65 @@ Using ggdag and daggity, draw a directed acylcic graph (DAG) that describes the 
 
 ```{r}
 # DAG for TMLE
+dag<-dagitty('dag {
+bb="0,0,1,1"
+"BMI T1" [pos="0.628,0.518"]
+"BP Medication T1" [exposure,pos="0.162,0.730"]
+"Blood Pressure T1" [pos="0.413,0.588"]
+"Cholesterol T1" [pos="0.764,0.429"]
+"Race/Ethnicity" [pos="0.219,0.224"]
+"Sex at birth" [pos="0.669,0.205"]
+Age [pos="0.118,0.337"]
+Education [pos="0.462,0.288"]
+Income [pos="0.167,0.505"]
+Mortality [outcome,pos="0.674,0.737"]
+"BMI T1" -> "Blood Pressure T1"
+"BMI T1" -> "Cholesterol T1"
+"BMI T1" -> Mortality
+"BP Medication T1" -> Mortality
+"Blood Pressure T1" -> "BP Medication T1"
+"Blood Pressure T1" -> Mortality
+"Cholesterol T1" -> "Blood Pressure T1"
+"Cholesterol T1" -> Mortality
+"Race/Ethnicity" -> "BMI T1"
+"Race/Ethnicity" -> "BP Medication T1"
+"Race/Ethnicity" -> "Blood Pressure T1"
+"Race/Ethnicity" -> "Cholesterol T1"
+"Race/Ethnicity" -> Education
+"Race/Ethnicity" -> Income
+"Race/Ethnicity" -> Mortality
+"Sex at birth" -> "BMI T1"
+"Sex at birth" -> "BP Medication T1"
+"Sex at birth" -> "Blood Pressure T1"
+"Sex at birth" -> "Cholesterol T1"
+"Sex at birth" -> Education
+"Sex at birth" -> Income
+"Sex at birth" -> Mortality
+Age -> "Blood Pressure T1"
+Age -> "Cholesterol T1"
+Age -> Education
+Age -> Income
+Age -> Mortality
+Education -> "BMI T1"
+Education -> "BP Medication T1"
+Education -> "Blood Pressure T1"
+Education -> "Cholesterol T1"
+Education -> Income
+Education -> Mortality
+Income -> "BMI T1"
+Income -> "BP Medication T1"
+Income -> "Blood Pressure T1"
+Income -> "Cholesterol T1"
+Income -> Mortality
+}')
+plot(dag)
+
+
 ```
+
+### Discussion 
+
+Accodring to our DAG, the minimal sufficient adjustment set of covariates for evaluating the relationship between Blood Pressure Medication and Mortality are; *Blood pressure, Education, Income, Simplified Race/Ethnicity, and Sex at birth*. When we control for these three covariates in our model, we are able to ensure that all backdoor paths are blocked and we are able to fulfill the independence assumption. 
 
 ## TMLE Estimation
 
@@ -168,11 +226,35 @@ Use the `tmle` package to estimate a model for the effect of blood pressure medi
     \item Report the average treatment effect and any other relevant statistics
 \end{enumerate}
 
+```{r}
+
+# new SL library
+sl_libs <- c('SL.glmnet', 'SL.glm','SL.ranger', 'SL.step', 'SL.rpartPrune')
+
+# specify covariates needed for analyses
+W<-subset(heart_disease, select=c(sex_at_birth,simplified_race,income_thousands,college_educ, blood_pressure))
+
+TMLE.est = tmle(Y = heart_disease$mortality, 
+                A = heart_disease$blood_pressure_medication,
+                W = W,
+                Q.SL.library = sl_libs,
+                g.SL.library = sl_libs, 
+                family='binomial')
+
+Psihat.TMLE = TMLE.est$estimates$ATE$`psi`
+
+```
+
+*Answer* The average treatment effect i.e. the counterfactual probability of mortality if all participants recieved blood pressure medication compared to the probability of mortality if all participants did not receive bood pressure medication is 0.326 lower. 
+
 ## Discussion Questions
 
 \begin{enumerate}
     \item What is a "double robust" estimator? Why does it provide a guarantee of consistency if either the outcome model or propensity score model is correctly specified? Or in other words, why does mispecifying one of the models not break the analysis? \textbf{Hint}: When answering this question, think about how your introductory statistics courses emphasized using theory to determine the correct outcome model, and in this course how we explored the benefits of matching.
 \end{enumerate}
+
+*Answer* A double dobust estimator such as TMLE, produces an unbiased estimate as long as either the outcome or exosure models are correctly specified. This is because TMLE incorporates an additional targeting step that optimizes bias-variance trade off for the target causal paramter (marginal outcome), unlike other estimating mechanisms that optimize bias-variance trade-off for the conditional outcome. 
+
 
 # LTMLE Estimation
 
