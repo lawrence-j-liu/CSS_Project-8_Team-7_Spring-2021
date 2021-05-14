@@ -380,9 +380,9 @@ Use the `ltmle` package for this section. First fit a "naive model" that \textbf
 ## Naive Model (no time-dependent confounding) estimate
 A1 <- heart_disease$blood_pressure_medication
 A2 <- heart_disease$blood_pressure_medication_2
+W <- heart_disease %>% select(sex_at_birth, simplified_race,income_thousands,college_educ, blood_pressure)
 Y <- heart_disease$mortality
-W_naive <- heart_disease %>% select(sex_at_birth,simplified_race,income_thousands,college_educ)
-data_naive <- data.frame(W_naive, A1, A2, Y)
+data_naive <- data.frame(W, A1, A2, Y)
 
 ltmle_naive_est <- 
   ltmle(data_naive, 
@@ -395,9 +395,7 @@ ltmle_naive_est <-
 ltmle_naive_est$estimates
 
 ## LTMLE estimate
-A1 <- heart_disease$blood_pressure_medication
-A2 <- heart_disease$blood_pressure_medication_2
-W <- heart_disease %>% select(sex_at_birth, simplified_race,income_thousands,college_educ, blood_pressure)
+
 L <- heart_disease %>% select(blood_pressure_2, bmi_2, chol_2)
 data_ltmle <- data.frame(W, A1, L, A2, Y)
 
