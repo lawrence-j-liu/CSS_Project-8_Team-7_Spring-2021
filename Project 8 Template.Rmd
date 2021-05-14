@@ -214,7 +214,7 @@ plot(dag)
 
 ### Discussion 
 
-Accodring to our DAG, the minimal sufficient adjustment set of covariates for evaluating the relationship between Blood Pressure Medication and Mortality are; *Blood pressure, Education, Income, Simplified Race/Ethnicity, and Sex at birth*. When we control for these three covariates in our model, we are able to ensure that all backdoor paths are blocked and we are able to fulfill the independence assumption. 
+Accodring to our DAG, the minimal sufficient adjustment set of covariates for evaluating the relationship between Blood Pressure Medication and Mortality are; *Blood pressure, Education, Income, Simplified Race/Ethnicity, and Sex at birth*. When we control for these five covariates in our model, we are able to ensure that all backdoor paths are blocked and we are able to fulfill the independence assumption. 
 
 ## TMLE Estimation
 
@@ -270,21 +270,154 @@ Update your causal diagram to incorporate this new information. \textbf{Note}: I
 
 ```{r}
 # DAG for TMLE
+# DAG for TMLE
+dag_tmle<-dagitty('dag {
+bb="0,0,1,1"
+"BMI T1" [pos="0.628,0.518"]
+"BMI T2" [pos="0.755, 0.614"]
+"BP Medication T1" [exposure,pos="0.162,0.730"]
+"BP Medication T2" [exposure,pos="0.245, 0.830"]
+"Blood Pressure T1" [pos="0.413,0.588"]
+"Blood Pressure T2" [pos="0.421, 0.714"]
+"Cholesterol T1" [pos="0.764,0.429"]
+"Cholesterol T2" [pos = "0.8, 0.5"]
+"Race/Ethnicity" [pos="0.219,0.224"]
+"Sex at birth" [pos="0.669,0.205"]
+Age [pos="0.118,0.337"]
+Education [pos="0.462,0.288"]
+Income [pos="0.167,0.505"]
+Mortality [outcome,pos="0.674,0.737"]
+"BMI T1" -> "Blood Pressure T1"
+"BMI T1" -> "Cholesterol T1"
+"BMI T1" -> Mortality
+"BP Medication T1" -> Mortality
+"Blood Pressure T1" -> "BP Medication T1"
+"Blood Pressure T1" -> Mortality
+"Cholesterol T1" -> "Blood Pressure T1"
+"Cholesterol T1" -> Mortality
+"Race/Ethnicity" -> "BMI T1"
+"Race/Ethnicity" -> "BP Medication T1"
+"Race/Ethnicity" -> "Blood Pressure T1"
+"Race/Ethnicity" -> "Cholesterol T1"
+"Race/Ethnicity" -> Education
+"Race/Ethnicity" -> Income
+"Race/Ethnicity" -> Mortality
+"Sex at birth" -> "BMI T1"
+"Sex at birth" -> "BP Medication T1"
+"Sex at birth" -> "Blood Pressure T1"
+"Sex at birth" -> "Cholesterol T1"
+"Sex at birth" -> Education
+"Sex at birth" -> Income
+"Sex at birth" -> Mortality
+Age -> "Blood Pressure T1"
+Age -> "Cholesterol T1"
+Age -> Education
+Age -> Income
+Age -> Mortality
+Education -> "BMI T1"
+Education -> "BP Medication T1"
+Education -> "Blood Pressure T1"
+Education -> "Cholesterol T1"
+Education -> Income
+Education -> Mortality
+Income -> "BMI T1"
+Income -> "BP Medication T1"
+Income -> "Blood Pressure T1"
+Income -> "Cholesterol T1"
+Income -> Mortality
+
+
+"BMI T1" -> "BMI T2"
+"BMI T1" -> "Cholesterol T2"
+"BMI T1" -> "Blood Pressure T2"
+"Cholesterol T1" -> "Cholesterol T2"
+"Cholesterol T1" -> "Blood Pressure T2"
+"Cholesterol T1" -> "BMI T2"
+"Blood Pressure T1" -> "Blood Pressure T2"
+"Blood Pressure T1" -> "Cholesterol T2"
+"Blood Pressure T1" -> "BMI T2"
+
+Age -> "Blood Pressure T2"
+Age -> "Cholesterol T2"
+Income -> "BMI T2"
+Income -> "Blood Pressure T2"
+Income -> "Cholesterol T2"
+Education -> "BMI T2"
+Education -> "Blood Pressure T2"
+Education -> "Cholesterol T2"
+"Race/Ethnicity" -> "BMI T2"
+"Race/Ethnicity" -> "Blood Pressure T2"
+"Race/Ethnicity" -> "Cholesterol T2"
+"Sex at birth" -> "BMI T2"
+"Sex at birth" -> "Blood Pressure T2"
+"Sex at birth" -> "Cholesterol T2"
+
+"BP Medication T1" -> "BMI T2"
+"BP Medication T1" -> "Cholesterol T2"
+"BP Medication T1" -> "Blood Pressure T2"
+
+"BMI T2" -> "BP Medication T2"
+"Cholesterol T2" -> "BP Medication T2"
+"Blood Pressure T2" -> "BP Medication T2"
+
+"BP Medication T1" -> "BP Medication T2"
+
+"BP Medication T2" -> Mortality
+
+"BMI T2" -> Mortality
+"Cholesterol T2" -> Mortality
+"Blood Pressure T2" -> Mortality
+}')
+plot(dag_tmle)
 ```
 
 ## LTMLE Estimation
 
 Use the `ltmle` package for this section. First fit a "naive model" that \textbf{does not} control for the time-dependent confounding. Then run a LTMLE model that does control for any time dependent confounding. Follow the same steps as in the TMLE section. Do you see a difference between the two estimates?
 
+
 ```{r}
 ## Naive Model (no time-dependent confounding) estimate
+A1 <- heart_disease$blood_pressure_medication
+A2 <- heart_disease$blood_pressure_medication_2
+Y <- heart_disease$mortality
+W_naive <- heart_disease %>% select(sex_at_birth,simplified_race,income_thousands,college_educ, blood_pressure, blood_pressure_2, bmi_2, chol_2)
+data_naive <- data.frame(W_naive, A1, A2, Y)
+
+ltmle_naive_est <- 
+  ltmle(data_naive, 
+        Anodes= c("A1", "A2"), 
+        Lnodes=NULL, 
+        Ynodes="Y", 
+        abar=c(1, 1),
+        SL.library = sl_libs)
+
+ltmle_naive_est$estimates
 
 ## LTMLE estimate
+A1 <- heart_disease$blood_pressure_medication
+A2 <- heart_disease$blood_pressure_medication_2
+W <- heart_disease %>% select(sex_at_birth, simplified_race,income_thousands,college_educ, blood_pressure)
+L <- heart_disease %>% select(blood_pressure_2, bmi_2, chol_2)
+data_ltmle <- data.frame(W, A1, L, A2, Y)
+
+ltmle_est <- 
+  ltmle(data_ltmle, 
+        Anodes=c("A1", "A2"), 
+        Lnodes=c("blood_pressure_2", "bmi_2", "chol_2"), 
+        Ynodes="Y", 
+        abar=c(1, 1), 
+        SL.library = sl_libs)
+
+ltmle_est$estimates
 ```
+Yes, there is a noticeable difference between the two estimates. The LTMLE estimate when including the time-dependent confounders is 0.246, while the estimate for the naive model without time-dependent confounders is 
 
 ## Discussion Questions
 
 \begin{enumerate}
     \item What sorts of time-dependent confounding should we be especially worried about? For instance, would we be concerned about a running variable for age the same way we might be concerned about blood pressure measured at two different times?
 \end{enumerate}
+
+*Answer* We should be more concerned about time-dependent confounders that are affected by the previous treatment relative to time-dependent confounders that are not affected by the previous treatment. So, it makes sense to be more concerned about blood pressure measured at two different times since  prior treatment would affect blood pressure but prior treatment would not affect a running variable like age. 
 
