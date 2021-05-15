@@ -409,7 +409,7 @@ ltmle_est <-
 
 ltmle_est$estimates
 ```
-Yes, there is a noticeable difference between the two estimates. The LTMLE estimate when including the time-dependent confounders is 0.246, while the estimate for the naive model without time-dependent confounders is 
+There is not an especially notable difference between the two estimates. The LTMLE estimate when including the time-dependent confounders is 0.235, while the estimate for the naive model without time-dependent confounders is 0.248.
 
 ## Discussion Questions
 
